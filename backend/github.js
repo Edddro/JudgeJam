@@ -1,6 +1,7 @@
 import { downloadRepoContents } from './codefiles.js';
+import { scrapeDescription } from './description.js';
 
-async function getRepoCreationDate(owner, repo, eventStartDate) {
+async function getRepoCreationDate(owner, repo, descURL, eventStartDate) {
     const url = `https://api.github.com/repos/${owner}/${repo}`;
   
     try {
@@ -24,6 +25,7 @@ async function getRepoCreationDate(owner, repo, eventStartDate) {
       console.log(isValid);
       if (isValid) {
          await downloadRepoContents(owner, repo);
+         await scrapeDescription(descURL, owner, repo);
       }
       return isValid;
     } catch (error) {
@@ -32,4 +34,4 @@ async function getRepoCreationDate(owner, repo, eventStartDate) {
     }
   }
   
-  getRepoCreationDate('author', 'repo', '2023-10-01T00:00:00Z');
+  getRepoCreationDate('Edddro', 'JudgeJam', 'https://devpost.com/software/homesafe-73n0f2', '2023-10-01T00:00:00Z');

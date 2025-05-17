@@ -1,15 +1,24 @@
 import fetch from 'node-fetch';
 import * as cheerio from 'cheerio';
+import { MongoClient } from 'mongodb';
+import dotenv from 'dotenv';
 
-async function scrapeDescription(url) {
+dotenv.config({ path: '../.env' });
+
+const client = new MongoClient(process.env.MONGODB);
+const db = client.db('github_repos');
+const descriptions = db.collection('descriptions');
+
+export async function scrapeDescription(url, owner, repo) {
   try {
+    await client.connect();
+
     const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
-          'Accept': 'text/html',
-        }
-      });
-      
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html',
+      }
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
@@ -28,14 +37,30 @@ async function scrapeDescription(url) {
       throw new Error('Unsupported URL');
     }
 
-    console.log(`Description:\n${description}`);
+    const owner_repo = `${owner}_${repo}`;
+
+    await descriptions.updateOne(
+      { owner_repo },
+      {
+        $set: {
+          owner_repo,
+          owner,
+          repo,
+          url,
+          description,
+          fetched_at: new Date()
+        }
+      },
+      { upsert: true }
+    );
+
+    console.log(`Saved description for ${owner_repo}`);
     return description;
 
   } catch (error) {
     console.error('Error:', error.message);
     return null;
+  } finally {
+    await client.close();
   }
 }
-
-scrapeDescription('https://devpost.com/software/example');
-scrapeDescription('https://dorahacks.io/buidl/example');
