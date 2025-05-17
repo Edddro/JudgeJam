@@ -2,16 +2,10 @@ import cv2
 import mediapipe as mp
 from deepface import DeepFace
 from collections import Counter
-import numpy as np
+import numpy
 import wave
 import pyaudio
-from pydub import AudioSegment
-from pymongo import MongoClient
 import io
-
-client = MongoClient("mongodb://localhost:27017")
-db = client["audio_db"]
-collection = db["audio_files"]
 
 FORMAT = pyaudio.paInt16
 CHANNELS = 1

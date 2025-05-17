@@ -2,9 +2,19 @@ import torch
 import torchaudio
 import numpy as np
 import librosa
-from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 import re
+import openai
+from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
+from google.cloud import vision
+import io
 from video import scores
+from openai import OpenAI
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 print("Loading CrisperWhisper...")
 processor = AutoProcessor.from_pretrained("nyrahealth/CrisperWhisper")
@@ -42,22 +52,18 @@ def detect_filler_words(transcription):
     return filler_count, total_words, filler_ratio
 
 def extract_energy(waveform):
-    # RMS energy (fast, vectorized)
     return np.sqrt(np.mean(waveform ** 2))
 
 def extract_pitch(waveform, sr):
-    # librosa.pyin is slow, so limit max frames by downsampling
-    hop_length = 512
     try:
         pitches, voiced_flag, _ = librosa.pyin(
             waveform,
             fmin=librosa.note_to_hz('C2'),
             fmax=librosa.note_to_hz('C7'),
             sr=sr,
-            hop_length=hop_length
+            hop_length=512
         )
     except Exception:
-        # fallback pitch = 0 if pyin fails
         return 0.0
     voiced_pitches = pitches[voiced_flag]
     if len(voiced_pitches) == 0:
@@ -67,35 +73,67 @@ def extract_pitch(waveform, sr):
 def normalize(value, min_val, max_val):
     return max(0, min(1, (value - min_val) / (max_val - min_val)))
 
-def score_fluency(filler_ratio, energy, pitch_var):
-    norm_filler = 1 - min(filler_ratio * 10, 1)
-    norm_energy = normalize(energy, 0.01, 0.1)
-    norm_pitch = normalize(pitch_var, 0, 50)
-    combined_score = (0.5 * norm_filler) + (0.3 * norm_pitch) + (0.2 * norm_energy)
-    return combined_score * 100
+def extract_rubric_text(image_path):
+    print("Extracting rubric via OCR...")
+    client = vision.ImageAnnotatorClient()
+    with io.open(image_path, 'rb') as image_file:
+        content = image_file.read()
+    image = vision.Image(content=content)
+    response = client.text_detection(image=image)
+    return response.text_annotations[0].description if response.text_annotations else ""
+
+def score_content_against_rubric(transcript, rubric_text):
+    print("Scoring content using OpenAI...")
+
+    prompt = f"""
+You are an evaluator grading a student's presentation. Rate the transcript from 0 to 100 based on how well it meets the following rubric criteria:
+
+Rubric:
+{rubric_text}
+
+Transcript:
+{transcript}
+
+Give a score from 0 to 100 depending on how thoroughly the transcript addresses the rubric criteria. Be critical: short or vague responses (e.g., under 10 words or generic language) should receive very low scores. Only respond with a single numeric score (0-100). No explanation.
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+        )
+        score_str = response.choices[0].message.content.strip()
+        return float(score_str)
+    except Exception as e:
+        print("Error during OpenAI scoring:", e)
+        return 0.0
 
 def main():
     file_path = "./recording.wav"
+    rubric_path = "./rubric.pdf"
+
     waveform, sr = load_audio(file_path)
-
     transcript = transcribe_audio(waveform, sr)
-    print("\nTranscription:\n", transcript)
-
     filler_count, total_words, filler_ratio = detect_filler_words(transcript)
     energy = extract_energy(waveform)
     pitch_var = extract_pitch(waveform, sr)
 
-    combined_score_audio = score_fluency(filler_ratio, energy, pitch_var)
+    norm_filler = 1 - min(filler_ratio * 10, 1)
+    norm_energy = normalize(energy, 0.01, 0.1)
+    norm_pitch = normalize(pitch_var, 0, 50)
+    fluency_component_score = (norm_filler + norm_energy + norm_pitch) / 3 * 100
+
+    rubric_text = extract_rubric_text(rubric_path)
+    print("\nExtracted Rubric Text:\n", rubric_text)
+    rubric_score = score_content_against_rubric(transcript, rubric_text)
+
+    combined_audio_score = (0.5 * rubric_score) + (0.5 * fluency_component_score)
 
     video_metrics = scores()
-    print(video_metrics)
-
     video_score = video_metrics.get("final_score", 0.0)
+    final_score = (combined_audio_score + video_score) / 2
 
-    # Combine audio and video scores
-    final_score = (combined_score_audio + video_score) / 2
-
-    # Final rating based on combined score
     if final_score > 80:
         final_rating = "Excellent"
     elif final_score > 60:
@@ -105,22 +143,15 @@ def main():
     else:
         final_rating = "Needs Improvement"
 
-    # Print results
-    print(f"\nFiller Words Detected: {filler_count}")
-    print(f"Total Words: {total_words}")
-    print(f"Filler Word Ratio: {filler_ratio:.2%}")
-    print(f"Energy (RMS): {energy:.4f}")
-    print(f"Pitch Variability (std Hz): {pitch_var:.2f}")
-    print(f"Combined Audio Fluency Score: {combined_score_audio:.2f}")
+    print("\n=== Evaluation Summary ===")
+    print("Transcript:\n", transcript)
+    print(f"Rubric Score (content): {rubric_score:.2f}")
+    print(f"Fluency Component Score: {fluency_component_score:.2f}")
+    print(f"Combined Audio Score: {combined_audio_score:.2f}")
     print(f"Video Score: {video_score:.2f}")
     print(f"Final Combined Score: {final_score:.2f} ({final_rating})")
-
-    print("\n=== Overall Speaking Quality Score ===")
-    print(f"Final Score (0-1 scale): {final_score:.2f}% ({final_rating})")
 
     return float(final_score.__round__(2) * 100), final_rating
 
 if __name__ == "__main__":
     main()
-
-# return feedback (like be more positive) and compare code with description and pitch
