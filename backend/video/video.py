@@ -2,9 +2,30 @@ import cv2
 import mediapipe as mp
 from deepface import DeepFace
 from collections import Counter
+import numpy as np
+import wave
+import pyaudio
+from pydub import AudioSegment
+from pymongo import MongoClient
+import io
 
-cap = cv2.VideoCapture(0)
+client = MongoClient("mongodb://localhost:27017")
+db = client["audio_db"]
+collection = db["audio_files"]
 
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 16000
+CHUNK = 1024
+RECORD_SECONDS = 60 * 10
+WAVE_OUTPUT_FILENAME = "temp_audio.wav"
+
+print("🎙️ Starting audio recording...")
+audio = pyaudio.PyAudio()
+stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+frames = []
+
+cap = cv2.VideoCapture(1)
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose()
 
@@ -23,8 +44,10 @@ while cap.isOpened():
     if not ret:
         break
 
-    frame_count += 1
+    data = stream.read(CHUNK)
+    frames.append(data)
 
+    frame_count += 1
     display_frame = cv2.flip(frame.copy(), 1)
 
     if frame_count % 15 == 0:
@@ -77,34 +100,31 @@ while cap.isOpened():
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+print("🛑 Stopping audio recording...")
+stream.stop_stream()
+stream.close()
+audio.terminate()
+
+with wave.open("recording.wav", 'wb') as wf:
+    wf.setnchannels(CHANNELS)
+    wf.setsampwidth(audio.get_sample_size(FORMAT))
+    wf.setframerate(RATE)
+    wf.writeframes(b''.join(frames))
+print("✅ WAV audio saved locally as recording.wav.")
+
 cap.release()
 cv2.destroyAllWindows()
 
 positive_emotions = emotion_counts['happy'] + emotion_counts['surprise'] + emotion_counts['neutral']
 total_emotion_frames = sum(emotion_counts.values())
 emotion_score = (positive_emotions / max(1, total_emotion_frames)) * 100
-
 gesture_score = (gesture_count / max(1, frame_count)) * 100
-
 posture_score = (good_posture_frames / max(1, posture_score_count)) * 100
 
 avg_movement = sum(movement_deltas) / max(1, len(movement_deltas))
-if avg_movement < 0.002:
-    movement_score = 20
-elif avg_movement > 0.015:
-    movement_score = 30 
-else:
-    movement_score = 100
+movement_score = 20 if avg_movement < 0.002 else 30 if avg_movement > 0.015 else 100
 
 final_score = round(0.3 * emotion_score + 0.2 * gesture_score + 0.2 * posture_score + 0.3 * movement_score, 2)
-
-print("\n📊 Final Pitch Evaluation")
-print(f"😀 Emotion Score:     {emotion_score:.2f}%")
-print(f"🤝 Gesture Score:     {gesture_score:.2f}%")
-print(f"💪 Posture Score:     {posture_score:.2f}%")
-print(f"🚶 Movement Score:    {movement_score:.2f}%")
-print(f"🏆 Final Score:       {final_score:.2f}%")
-print(f"📈 Emotion Breakdown: {dict(emotion_counts)}")
 
 def scores():
     return {
