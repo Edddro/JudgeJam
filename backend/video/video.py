@@ -1,20 +1,20 @@
+import os
 import cv2
 import mediapipe as mp
 from deepface import DeepFace
 from collections import Counter
-import numpy
 import wave
 import pyaudio
-import io
+import sys
 
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
 CHUNK = 1024
 RECORD_SECONDS = 60 * 10
-WAVE_OUTPUT_FILENAME = "temp_audio.wav"
+WAVE_OUTPUT_FILENAME = "recording.wav"
 
-print("🎙️ Starting audio recording...")
+print("Starting audio recording...", file=sys.stderr, flush=True)
 audio = pyaudio.PyAudio()
 stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
 frames = []
@@ -31,7 +31,7 @@ posture_score_count = 0
 prev_center_x = None
 movement_deltas = []
 
-print("⏳ Starting live analysis. Press 'q' to stop.")
+print("Starting live analysis. Press 'q' to stop.", file=sys.stderr, flush=True)
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -94,17 +94,18 @@ while cap.isOpened():
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-print("🛑 Stopping audio recording...")
+print("Stopping audio recording...", file=sys.stderr, flush=True)
 stream.stop_stream()
 stream.close()
 audio.terminate()
 
-with wave.open("recording.wav", 'wb') as wf:
+output_path = os.path.join(os.path.dirname(__file__), "recording.wav")
+with wave.open(output_path, 'wb') as wf:
     wf.setnchannels(CHANNELS)
     wf.setsampwidth(audio.get_sample_size(FORMAT))
     wf.setframerate(RATE)
     wf.writeframes(b''.join(frames))
-print("✅ WAV audio saved locally as recording.wav.")
+print(f"WAV audio saved locally as {output_path}.", file=sys.stderr, flush=True)
 
 cap.release()
 cv2.destroyAllWindows()
