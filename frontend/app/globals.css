@@ -48,4 +48,92 @@
     image-rendering: pixelated;
     position: relative;
   }
+
+  .bg-scanlines {
+    background-image: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, 0.1) 50%);
+    background-size: 100% 4px;
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes drip {
+  0% {
+    height: 0;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    height: 20px;
+    opacity: 0;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-drip-1 {
+  animation: drip 2s infinite;
+  animation-delay: 0s;
+}
+
+.animate-drip-2 {
+  animation: drip 2s infinite;
+  animation-delay: 0.5s;
+}
+
+.animate-drip-3 {
+  animation: drip 2s infinite;
+  animation-delay: 1s;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 20s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }

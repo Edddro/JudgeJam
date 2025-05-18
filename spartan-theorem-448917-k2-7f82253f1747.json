@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "spartan-theorem-448917-k2",
+  "private_key_id": "7f82253f17474dc33aa53fddff7698c1a049e01b",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCaiTdKx0vOvjOB\nFiAE/H5pUPu9VnTMho2mBeCSN7frgHdI0APLyXfzniN1mM0kcW3j2WMYa2ulsZQn\no5vX5im3vvqld+9VJba8SvOgEkT5Vs/moNFFTBhRHr5Aw7OHB2reaL6TItuNIZja\nWLUbRiH8AIv4qQQRhgtkhnuCC0ylqWEVKgrzE0ZeUzs+ektSR/E36A/bkPDxdWyl\nTk6TfJuvtM0TloqI5Xe0hm71HBwG99MwOLOu8w6ujsT+9Q71xaFcDVCJb1jOoq+8\n0y+MCHPQm4K1OPWnnJSVAMnAm5mJdV30voDQrq0StZKh9fnJcRlFcksZrPfaxLLK\nfBMQADsHAgMBAAECggEAIUZdfQEHzjb/QRLiByDVGVlCM2Ur1iQ82NxYHDPaKt/p\nD2kXACjb5r2M1hP2TBwOdOrInyf2MGHZzGU6t9TL89AwCTQXeSabP9UFu1hjuKqc\nLoU/OmQlskXj4m8hN3h95vD35Bez3aI31wAV0w8ZXzlA6mR+R0WtK1KXwosrUFof\n33ogySF6PHv3CvQnKFPP+vSP83h03uIbt7anNNClVXh9cld77a+vR0RJrONTCnKK\nzbaI4lNrjHdPuu/kIcxLe6axSbvhdjAV1UnzCtxQmsRjKfNImGgta87uIBgkPRax\nQlG+m1zBFs8Un6P5CJ9hezQVzs4QbXB5/QugW7EjgQKBgQDYzBBeE/DzpkmsD7uk\ntqfZKILVhR52l3Cx07RggTJ2pzih+5QkamaSCueZkG2wVmDclN4rcpkRRFTnpIlg\nqmZJC8islQ1UjW3m5PGsFP1ysbH8lKJp7AR1wajWfd+Gmdj5sYa3Ku9f888hhmTH\nkuqjD15WobSZrjHJ9Kjqrz24hwKBgQC2evh0M+mPxh7Pr2q8jNKaSDjY2Jpmjaq9\nBF8y/ZWHITb4WMQIlHBZNstYGQFTz55n3fP6X7QJQ2Ngl2jElik3K6WY7RP13hKU\nMM3Z++cjyYMzFrhejHCxjVbYRnCQaipN4EaMAruQpnm/9q8uMWbik4yoTf5i9Erc\n6DDU7CqJgQKBgQCdOEe6Yg3ANFyDChnTVp8czdMr01EHQcX5QAU0Yx1cjOJ2HgMN\n8ZeW24+ffuz9D3dJIDCKI547tmk4X8s8rfZljMUn2yQCqFoGMwvL9qDil1jzSjsK\nQ53sY9f0TO5YJ6QBWCvRE7Lqy93vew4E6Vd9jvykKLrXJEt5IROKtjE1awKBgHaN\nufE08N8Zplbj7oKFMyZNGbG4N8e87lpTBs6H9aePKrl6YhH47mznroCT7krXLmDo\n0GOv3bXO9DeC5uwharGPR8zs6fTozEU+195xTB/yAa0la67xqx2PaAam7ObGMqnZ\ntbus4tL9dUgEKpfmPKOjnNSTp1v+vsx6hY8vyAsBAoGAEjDU3Q6OHw8nQkrAn9B0\noATZB/eUIy/omsPWm7cXuuXOeJmIFNATKweh0YHrKQqzpyROARuI+JKDY//CrfDV\nzzNoQuXXl8VVU5JpUcZTmNIQPhAUuCXxtlTPDMpbXBSTl2dhtsRrvv8uZcjdGdpY\nefKhtFxvtJlO4yQOV2eCFWc=\n-----END PRIVATE KEY-----\n",
+  "client_email": "jamhacks@spartan-theorem-448917-k2.iam.gserviceaccount.com",
+  "client_id": "107772953734057300602",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/jamhacks%40spartan-theorem-448917-k2.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
