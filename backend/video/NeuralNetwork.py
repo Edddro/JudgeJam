@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from openai import OpenAI
@@ -12,6 +13,7 @@ from transformers import AutoProcessor, AutoModelForSpeechSeq2Seq
 from google.cloud import vision
 import io
 from video import scores
+from validateClaimedTechnologies import validate_technologies
 
 load_dotenv()
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../spartan-theorem-448917-k2-7f82253f1747.json"))
@@ -89,15 +91,13 @@ def extract_rubric_text(image_path):
 def score_content_against_rubric(transcript, rubric_text):
     print("Scoring content using OpenAI...", file=sys.stderr, flush=True)
     prompt = f"""
-You are an evaluator grading a student's presentation. Rate the transcript from 0 to 100 based on how well it meets the following rubric criteria:
-
 Rubric:
 {rubric_text}
 
 Transcript:
 {transcript}
 
-Give a score from 0 to 100 depending on how thoroughly the transcript addresses the rubric criteria. Be critical: short or vague responses (e.g., under 10 words or generic language) should receive very low scores. Only respond with a single numeric score (0-100). No explanation.
+Score the transcript 0–100 based on rubric coverage. Be strict. Short/vague responses = low scores. Respond with a single number only.
 """
     try:
         response = client.chat.completions.create(
@@ -115,7 +115,6 @@ def return_values():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(base_dir, "recording.wav")
     rubric_path = os.path.join(base_dir, "rubric.pdf")
-
 
     waveform, sr = load_audio(file_path)
     transcript = transcribe_audio(waveform, sr)
@@ -171,32 +170,33 @@ def fetch_description_from_mongodb(project_id: str):
 
 def compare_with_openai(transcript: str, description: str):
     prompt = f"""
-You are a judge at a hackathon evaluating how well a project presentation aligns with the project's written description. Analyze the following:
-
 Transcript:
 {transcript}
 
 Project Description:
 {description}
 
-Rate the alignment on a scale from 0 to 100 between the transcript and the description on a scale from 0 to 100. How well does the transcript match and represent the key points of the description? Be strict:
-- 90-100: Excellent match
-- 60-89: Partial match
-- Below 60: Poor match
+1. List mentioned technologies.
+2. Score alignment 0-100 between transcript and description.
 
-Respond ONLY with the number (e.g., "72"). Do not include any words.
+Respond in JSON:
+{{
+  "claimed_technologies": [...],
+  "alignment_score": number
+}}
 """
     try:
         response = client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0
+            temperature=0,
         )
-        score = float(response.choices[0].message.content.strip())
-        return score
+        content = response.choices[0].message.content.strip()
+        result = json.loads(content)
+        return result["alignment_score"], result["claimed_technologies"]
     except Exception as e:
-        print("Error comparing with OpenAI:", e, file=sys.stderr, flush=True)
-        return 0.0
+        print("Error in compare_with_openai:", e, file=sys.stderr)
+        return 0.0, []
 
 def generate_feedback(score):
     if score > 80:
@@ -212,23 +212,26 @@ def main(project_id: str):
     if not description:
         return {"error": "Description not found in MongoDB."}
 
-    similarity_score = compare_with_openai(transcript, description)
+    similarity_score, claimed_tech = compare_with_openai(transcript, description)
     feedback = generate_feedback(similarity_score)
+
+    validation_result = validate_technologies(project_id, claimed_tech)
 
     print("\n=== Comparison Results ===", file=sys.stderr, flush=True)
     print(f"Similarity Score: {similarity_score:.2f}", file=sys.stderr, flush=True)
     print("Feedback:", feedback, file=sys.stderr, flush=True)
+    print("Technology Validation:", validation_result, file=sys.stderr, flush=True)
 
     return {
         "transcript": transcript,
         "description": description,
         "similarity_score": similarity_score,
-        "feedback": feedback
+        "feedback": feedback,
+        "claimed_technologies": claimed_tech,
+        "validation": validation_result
     }
 
 if __name__ == "__main__":
-    import json
-
     if len(sys.argv) < 3:
         print(json.dumps({"error": "Owner and repo arguments missing"}), file=sys.stderr, flush=True)
         sys.exit(1)
@@ -237,5 +240,5 @@ if __name__ == "__main__":
     repo = sys.argv[2]
     project_id = f"{owner}_{repo}"
 
-    result = main(project_id=project_id)
+    result = main(project_id)
     print(json.dumps(result))
