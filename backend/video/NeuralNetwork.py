@@ -97,7 +97,7 @@ Rubric:
 Transcript:
 {transcript}
 
-Score the transcript 0–100 based on rubric coverage. Be strict. Short/vague responses = low scores. Respond with a single number only.
+Score the transcript 0-100 based on rubric coverage. Be strict. Short/vague responses = low scores. Respond with a single number only.
 """
     try:
         response = client.chat.completions.create(
@@ -192,11 +192,11 @@ Respond in JSON:
             temperature=0,
         )
         content = response.choices[0].message.content.strip()
-        result = json.loads(content)
-        return result["alignment_score"], result["claimed_technologies"]
+        data = json.loads(content)
+        return data.get("alignment_score", 0), data.get("claimed_technologies", [])
     except Exception as e:
-        print("Error in compare_with_openai:", e, file=sys.stderr)
-        return 0.0, []
+        print("Error in compare_with_openai:", e, file=sys.stderr, flush=True)
+        return 0, []
 
 def generate_feedback(score):
     if score > 80:

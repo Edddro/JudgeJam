@@ -4,10 +4,12 @@ from pymongo import MongoClient
 from openai import OpenAI
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 MONGO_URI = os.getenv("MONGODB")
 
+# Initialize clients
 mongo_client = MongoClient(MONGO_URI)
 db = mongo_client["github_repos"]
 files_collection = db["files"]
@@ -26,7 +28,7 @@ def validate_technologies(claimed_technologies, project_name, max_total_chars=12
 
     for file in code_files:
         if 'content' in file:
-            content = file['content'][:max_file_chars]  # Limit per file
+            content = file['content'][:max_file_chars]
             if total_chars + len(content) > max_total_chars:
                 break
             selected_code.append(content)
@@ -35,12 +37,16 @@ def validate_technologies(claimed_technologies, project_name, max_total_chars=12
     all_code = "\n".join(selected_code)
 
     prompt = (
-        f"The team claims to have used these technologies:\n{', '.join(claimed_technologies)}\n\n"
+        f"The team claims to have used the following technologies:\n"
+        f"{', '.join(claimed_technologies)}\n\n"
         f"Here is their project code:\n{all_code}\n\n"
-        "Which technologies are clearly used in the code (via import statements, syntax, or usage)?\n"
-        "Return:\n"
-        "VERIFIED:\n- List of confirmed technologies\n"
-        "MISSING OR UNCONFIRMED:\n- List of technologies not evident in the code"
+        "For each claimed technology, determine if it is clearly used in the code "
+        "(e.g., via import statements, APIs, syntax, or library usage).\n\n"
+        "Return your response in JSON with two lists:\n"
+        "{\n"
+        '  "verified": [list of confirmed technologies],\n'
+        '  "missing_or_unconfirmed": [list of technologies not evident in the code]\n'
+        "}"
     )
 
     try:
@@ -49,9 +55,47 @@ def validate_technologies(claimed_technologies, project_name, max_total_chars=12
             messages=[{"role": "user", "content": prompt}],
             temperature=0
         )
-        result = response.choices[0].message.content.strip()
-        print("\n" + result, file=sys.stderr)
-        return result
+
+        content = response.choices[0].message.content.strip()
+
+        # Try to parse as JSON-like dict
+        try:
+            result = eval(content, {"__builtins__": {}})
+            if isinstance(result, dict) and "verified" in result and "missing_or_unconfirmed" in result:
+                print("\nValidation Result:\n", result, file=sys.stderr)
+                return result
+            else:
+                raise ValueError("Response does not contain required keys.")
+
+        except Exception:
+            # Fallback to manual parsing from natural language format
+            verified = []
+            missing = []
+            current = None
+
+            lines = content.splitlines()
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                if line.lower().startswith("the team has used"):
+                    current = "verified"
+                elif line.lower().startswith("the team has not provided"):
+                    current = "missing"
+                elif line[0].isdigit() and current:
+                    tech_name = line.split(".", 1)[1].strip()
+                    tech_name = tech_name.split(" (")[0].strip()
+                    if current == "verified":
+                        verified.append(tech_name)
+                    else:
+                        missing.append(tech_name)
+
+            result = {
+                "verified": verified,
+                "missing_or_unconfirmed": missing
+            }
+            print("\nParsed fallback result:\n", result, file=sys.stderr)
+            return result
 
     except Exception as e:
         print(f"Error during OpenAI call: {e}", file=sys.stderr)
