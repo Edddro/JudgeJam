@@ -1,7 +1,7 @@
 
 import { getRepoCreationDate } from './repo.js';
 
-getRepoCreationDate('edddro', 'JudgeJam', 'https://dorahacks.io/buidl/23021', '2025-05-14T09:40')
+getRepoCreationDate('Edddro', 'JudgeJam', 'https://devpost.com/software/homesafe-73n0f2', '2025-04-28T11:53')
     .then(result => {
         console.log(JSON.stringify(result));
         process.exit(0);
